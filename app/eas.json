@@ -1,0 +1,19 @@
+{
+  "cli": { "version": ">= 5.9.3" },
+  "build": {
+    "preview": {
+      "distribution": "internal",
+      "android": {
+        "buildType": "apk"
+      },
+      "env": {
+        "EXPO_PUBLIC_GEMINI_KEY": "PUT_YOUR_KEY"
+      }
+    },
+    "production": {
+      "android": {
+        "buildType": "app-bundle"
+      }
+    }
+  }
+}
