@@ -1,0 +1,83 @@
+name: TubeNest AI – Android APK
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [ main, dev ]
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: app
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Node 20
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: 'npm'
+          cache-dependency-path: app/package-lock.json
+
+      - name: Setup Java 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: 'temurin'
+          java-version: '17'
+
+      - name: Setup Android SDK
+        uses: android-actions/setup-android@v3
+
+      - name: Install dependencies
+        run: npm ci || npm install
+
+      - name: Write .env
+        run: |
+          cat > .env << 'EOF'
+          EXPO_PUBLIC_GEMINI_KEY=${{ secrets.GEMINI_KEY }}
+          EXPO_PUBLIC_TTS_PROXY=${{ secrets.TTS_PROXY }}
+          EXPO_PUBLIC_GOOGLE_ANDROID_CLIENT_ID=${{ secrets.GOOGLE_ANDROID_CLIENT_ID }}
+          EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID=${{ secrets.GOOGLE_WEB_CLIENT_ID }}
+          EOF
+
+      - name: Prebuild Expo
+        run: npx expo prebuild --platform android --clean --non-interactive
+
+      - name: Build APK (release)
+        run: |
+          cd android
+          chmod +x gradlew
+          ./gradlew assembleRelease --no-daemon -x lint -x test
+
+      - name: Sign APK (debug key – replace with real)
+        run: |
+          cd android/app/build/outputs/apk/release
+          ls -la
+
+      - name: Upload APK artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: TubeNest-AI-v3
+          path: app/android/app/build/outputs/apk/release/app-release.apk
+          retention-days: 30
+
+      - name: Create GitHub Release
+        if: github.ref == 'refs/heads/main'
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: v3.${{ github.run_number }}
+          name: "TubeNest AI v3 – ${{ github.run_number }}"
+          files: app/android/app/build/outputs/apk/release/app-release.apk
+          body: |
+            TubeNest AI – NewPipe + Gemini
+            - Reklamsız YouTube
+            - Background / Popup / Download
+            - AI Dubbing sync
+            - Edge-TTS ücretsiz sınırsız
+            - Subscriptions
+          draft: false
+          prerelease: false
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
